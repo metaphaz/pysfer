@@ -4,7 +4,7 @@
 [![python](	https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org)
 
 
-Pyfer is a Python library for transfering data between python procseses. Wİth pyfer you can:
+Pyfer is a Python library for transfering data between python procseses. With pyfer you can:
 
 + Acsess variables or data from different Python programs.
 + Acsess variables or data between 'Main program' and other procseses.
@@ -38,7 +38,6 @@ pyfer.localvar.delete("my_var")
 
 Pull requests are welcome. For major changes, please open an issue first
 to discuss what you would like to change.
-
 Please make sure to update tests as appropriate.
 
 ## License
