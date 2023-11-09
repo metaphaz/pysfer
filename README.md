@@ -1,10 +1,10 @@
-# Pyfer
+# Pysfer
 
 [![jhc github](https://img.shields.io/badge/GitHub-metaphaz-181717.svg?style=flat&logo=github)](https://github.com/metaphaz) 
 [![python](	https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org)
 
 
-Pyfer is a Python library for transfering data between python procseses. With pyfer you can:
+Pysfer is a Python library for transfering data between python procseses. With pysfer you can:
 
 + Acsess variables or data from different Python programs.
 + Acsess variables or data between 'Main program' and other procseses.
@@ -16,22 +16,22 @@ Pyfer is a Python library for transfering data between python procseses. With py
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install foobar.
 
 ```bash
-pip install pyfer
+pip install pysfer
 ```
 
 ## Usage
 
 ```python
-import pyfer
+import pysfer
 
 # update or create "my_var" with "Hello World" value
-pyfer.localvar.update("my_var","Hello World!")
+pysfer.localvar.update("my_var","Hello World!")
 
 # returns the value of "my_var"
-new_var = pyfer.localvar.get("my_var")
+new_var = pysfer.localvar.get("my_var")
 
 # delete "my_var" and its value
-pyfer.localvar.delete("my_var")
+pysfer.localvar.delete("my_var")
 ```
 
 ## Contributing
