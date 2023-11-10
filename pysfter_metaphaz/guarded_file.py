@@ -4,7 +4,7 @@ from pathlib import Path
 
 class GuardedFile:
     """
-    A class for preventing race conditions when reading/writing files.
+    A class for preventing race conditions when reading or writing files.
     It doesn't prevent underlying file to be completely guarded. It just prevents any GuardedFile instances from reading/writing to it.
     Like the std::unique_ptr<T> in C++
     """
@@ -27,22 +27,27 @@ class GuardedFile:
         self.close()
         
     def __enter__(self) -> Self:
+        self.lock(True)
         return self
     
     def __exit__(self, exc_type, exc_value, traceback) -> bool:
         self.close()
         return False
     
-    def lock(self) -> None|IO[Any]:
+    def lock(self, wait_for_unlock: bool=False) -> None|IO[Any]:
         """Locks the file
 
         Returns:
             IO[Any]: The underlying file descriptor.
         """
         if not self.__has_file or self.is_locked():
-            return None
+            if not wait_for_unlock:
+                return None
         
-        parent_path: Path = self.__file_path.parent.resolve()
+        while self.is_locked():
+            pass
+        
+        parent_path: Path = self.__file_path.parent.absolute()
         guard_file: Path = parent_path / f".{self.__file_hash}.lock"
         guard_file.touch()
         self.__locked_by_self = True
@@ -59,7 +64,7 @@ class GuardedFile:
         if not self.__locked_by_self:
             raise RuntimeError("This object did not locked the file!")
         
-        parent_path: Path = self.__file_path.parent.resolve()
+        parent_path: Path = self.__file_path.parent.absolute()
         guard_file: Path = parent_path / f".{self.__file_hash}.lock"
         guard_file.unlink()
     
@@ -72,10 +77,18 @@ class GuardedFile:
         if not self.__has_file:
             return False
         
-        parent_path: Path = self.__file_path.parent.resolve()
+        parent_path: Path = self.__file_path.parent.absolute()
         guard_file: Path = parent_path / f".{self.__file_hash}.lock"
 
         return guard_file.exists()
+    
+    def is_locked_by_self(self) -> bool:
+        """Returns whether the file is locked by this object or not.
+
+        Returns:
+            bool: True if the file is locked by this object. False otherwise.
+        """
+        return self.__locked_by_self
     
     def close(self) -> None:
         """
@@ -125,10 +138,10 @@ class GuardedFile:
         
         self.__fd: IO[Any] = open(file=file, mode=mode, buffering=buffering, encoding=encoding, errors=errors, newline=newline, closefd=closefd, opener=opener)
         self.__file_path: Path = Path(file)
-        if self.__file_path.resolve().is_dir():
+        if self.__file_path.absolute().is_dir():
             raise RuntimeError("Given file is a directory!")
         self.__file_path.touch()
-        self.__file_hash: str = hashlib.md5(str(self.__file_path.resolve()).encode('utf-8')).hexdigest()
+        self.__file_hash: str = hashlib.md5(str(self.__file_path.absolute()).encode('utf-8')).hexdigest()
         self.__has_file = True
         self.__locked_by_self = False
 

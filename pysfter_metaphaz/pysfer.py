@@ -1,69 +1,168 @@
 import json
 import os
 import logging
+from pathlib import Path
+from guarded_file import GuardedFile
+from typing import Self, Any, Literal, IO
 
+class DataSynchronizer:
+    def __init__(self, filename: str = '') -> None:
+        """Create a new data synchronizer
 
-def localvar():
-    return localvars
-
-    
-class localvars:
-    def __init__(self):
-        self.folder = os.path.dirname(os.path.realpath(__file__))+"/.pyfer"
-        self.file = os.path.dirname(os.path.realpath(__file__))+"/.pyfer/pyferlocaldata.json"
-        if os.path.exists(self.folder):
-            open(self.file,"w").write("{}")
+        Args:
+            filename (str, optional): The file path that you want to use for saving and reading. If left empty, it defaults to ./.pysfer/pysferlocaldata.json.
+        """
+        if filename:
+            self.file_path = Path(filename)
         else:
-            os.makedirs(self.folder)
-            
-        logging.basicConfig(filename=f"{self.folder}+/locallogs.log",level=logging.INFO,
-                            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    
-    def get(self ,var_name: str):
-        localjsondata = json.loads(open(self.file,"r").read())
-        if var_name in localjsondata:
-            return localjsondata[var_name]
-        else:
-            logging.warning("Unable to get "+var_name)
-            return
+            self.file_path: Path = Path(__file__).parent / ".pysfer/pysferlocaldata.json"
         
-    def update(self, var_name: str, value):
-        localjsondata = json.loads(open(self.file,"r").read())
-        localjsondata[var_name] = value
-        open(self.file,"w").write(json.dumps(localjsondata))
+        self.file_path.parent.absolute().mkdir(parents=True, exist_ok=True)
+        if not self.file_path.exists():
+            self.file_path.touch()
+            with GuardedFile(self.file_path.absolute(), 'w') as file:
+                file.get_fd().write('{}')
+
+    def __enter__(self) -> Self:
         return self
     
-    def delete(self, var_name: str):
-        localjsondata = json.loads(open(self.file,"r").read())
-        del localjsondata[var_name] 
-        open(self.file, "w").write(json.dumps(localjsondata))
+    def __exit__(self) -> bool:
+        return False
     
-    def replace(self, old_name: str, new_name: str):
-        localjsondata = json.loads(open(self.file,"r").read())
-        if old_name in localjsondata:
-            value = localjsondata[old_name]
-            del localjsondata[old_name]
-            localjsondata[new_name] = value
-            open(self.file,"w").write(json.dumps(localjsondata))
-        else:
-            logging.warning("There is no "+old_name+" in cache")
-            return
+    def get(self, variable_name: str, class_name: type = None) -> Any:
+        """Retrieves a variable by its name.
 
-    def getjson(self):
-        localjsondata = json.loads(open(self.file,"r").read())
-        return localjsondata
+        Args:
+            variable_name (str): The name of the variable that you want to retrieve.
+            class_name (type, optional): If the saved variable is a dictionary and has a '__name__' field, You can pass the class to get an object from that class. Defaults to None.
+
+        Returns:
+            Any: Retrieved value
+        """
+        with GuardedFile(self.file_path.absolute(), 'r') as file:
+            json_data: dict = json.load(file.get_fd(True))
+            
+            if variable_name not in json_data:
+                # TODO: Warn here
+                return
+            
+            value: Any = json_data[variable_name]
+
+            # If it is a class, create a new class instance using given class name.
+            if type(value) is dict and '__name__' in value and value['__name__'] == class_name.__name__:
+                value.pop('__name__')
+                return class_name(**value)
+            
+            return value
     
-    def updatejson(self, json_type):
-        open(self.file,"w").write(json.dumps(json_type))
-        return self
+    def update(self, variable_name: str, variable_value: Any) -> None:
+        """Updates the value of the variable with given name.
+
+        Args:
+            variable_name (str): Name of the variable.
+            variable_value (Any): New value of the variable.
+        """
+        
+        with GuardedFile(self.file_path.absolute(), "r+") as file:
+            json_data: dict = json.load(file.get_fd())
+            var_type: type = type(variable_value)
+
+            if hasattr(var_type, '__name__') and hasattr(variable_value, '__dict__'):
+                vars_of_object = vars(variable_value)
+                vars_of_object['__name__'] = type(variable_value).__name__
+                json_data[variable_name] = vars_of_object
+            else:
+                json_data[variable_name] = variable_value
+            
+            self.__clear_file(file.get_fd())
+            json.dump(json_data, file.get_fd())
     
-    def deletejson(self):
-        open(self.file,"w").write("{}")
+    def delete(self, variable_name: str) -> None:
+        """Deletes a variable by its name
+
+        Args:
+            variable_name (str): The name of the variable you want to delete.
+        """
+        
+        with GuardedFile(self.file_path.absolute(), "r+") as file:
+            json_data: dict = json.load(file.get_fd())
+            if variable_name not in json_data:
+                # TODO: Warn here
+                return
+            
+            del json_data[variable_name]
+            self.__clear_file(file.get_fd())
+            json.dump(json_data, file.get_fd())
+    
+    def rename(self, current_name: str, new_name: str) -> None:
+        """Renames a variable.
+
+        Args:
+            current_name (str): The current name of the variable
+            new_name (str): New name of the variable
+        """
+        
+        with GuardedFile(self.file_path.absolute(), "r+") as file:
+            json_data: dict = json.load(file.get_fd())
+
+            if not current_name in json_data:
+                # TODO: Warn here
+                return
+            
+            json_data[new_name] = json_data[current_name]
+            del json_data[current_name]
+            
+            self.__clear_file(file.get_fd())
+            json.dump(json_data, file.get_fd())
+        
+    def get_content(self) -> None:
+        """
+        Retrieves the content of the file
+        """
+        with GuardedFile(self.file_path.absolute(), 'r') as file:
+            return file.get_fd().read()
+    
+    def clear_content(self) -> None:
+        """
+        Clears the content of the file
+        """
+        with GuardedFile(self.file_path.absolute(), 'r') as file:
+            self.__clear_file(file.get_fd())
+    
+    def __clear_file(self, file_descriptor: IO[Any]) -> None:
+        file_descriptor.seek(0)
+        file_descriptor.truncate(0)
 
 
+def test() -> None:
+    # Basic stuff
+    ds = DataSynchronizer()
+    ds.update('myStr', 'Hello')
+    ds.update('myInt', 42)
+    ds.update('myFloat', 3.14)
+    ds.update('myBool', True)
+    ds.update('myList', ["This", "is", "a", "dummy", "list", 1.2, False])
+    ds.update('myDict', {'a': 1, 'b': 2})
+    
+    # Loading custom objects
+    class CustomClass:
+        def __init__(self, x, y):
+            self.x = x
+            self.y = y
+    
+    obj = CustomClass(3, 4)
+    ds.update('obj', obj)
+    print(ds.get('obj', CustomClass).x)
 
+    # Deleting
+    ds.update("somevar", 1234)
+    ds.delete("somevar")
 
-
-
-
-
+    # Renaming
+    ds.update("foo", 1337)
+    ds.rename("foo", "bar")
+    print(ds.get("bar"))
+    
+    
+if __name__ == '__main__':
+    test()
