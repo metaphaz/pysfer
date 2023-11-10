@@ -1,5 +1,4 @@
 import json
-import os
 import logging
 from pathlib import Path
 from guarded_file import GuardedFile
@@ -22,6 +21,9 @@ class DataSynchronizer:
             self.file_path.touch()
             with GuardedFile(self.file_path.absolute(), 'w') as file:
                 file.get_fd().write('{}')
+        
+        logging.basicConfig(filename=f'{self.file_path.parent.absolute() / "psyfer_logs.log"}',level=logging.INFO,
+                            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     def __enter__(self) -> Self:
         return self
@@ -29,12 +31,12 @@ class DataSynchronizer:
     def __exit__(self) -> bool:
         return False
     
-    def get(self, variable_name: str, class_name: type = None) -> Any:
+    def get(self, variable_name: str, class_type: type = None) -> Any:
         """Retrieves a variable by its name.
 
         Args:
             variable_name (str): The name of the variable that you want to retrieve.
-            class_name (type, optional): If the saved variable is a dictionary and has a '__name__' field, You can pass the class to get an object from that class. Defaults to None.
+            class_type (type, optional): If the saved variable is a dictionary and has a '__name__' field, You can pass the class to get an object from that class. Defaults to None.
 
         Returns:
             Any: Retrieved value
@@ -43,15 +45,15 @@ class DataSynchronizer:
             json_data: dict = json.load(file.get_fd(True))
             
             if variable_name not in json_data:
-                # TODO: Warn here
+                logging.warning(f'Unable to get "{variable_name}"')
                 return
             
             value: Any = json_data[variable_name]
 
             # If it is a class, create a new class instance using given class name.
-            if type(value) is dict and '__name__' in value and value['__name__'] == class_name.__name__:
+            if type(value) is dict and '__name__' in value and value['__name__'] == class_type.__name__:
                 value.pop('__name__')
-                return class_name(**value)
+                return class_type(**value)
             
             return value
     
@@ -87,7 +89,7 @@ class DataSynchronizer:
         with GuardedFile(self.file_path.absolute(), "r+") as file:
             json_data: dict = json.load(file.get_fd())
             if variable_name not in json_data:
-                # TODO: Warn here
+                logging.warning(f'Cannot delete the variable: No variable with name "{variable_name}" exists!')
                 return
             
             del json_data[variable_name]
@@ -106,7 +108,7 @@ class DataSynchronizer:
             json_data: dict = json.load(file.get_fd())
 
             if not current_name in json_data:
-                # TODO: Warn here
+                logging.warning(f'Cannot rename the variable: No variable with name "{current_name}" exists!')
                 return
             
             json_data[new_name] = json_data[current_name]
@@ -126,17 +128,20 @@ class DataSynchronizer:
         """
         Clears the content of the file
         """
-        with GuardedFile(self.file_path.absolute(), 'r') as file:
+        with GuardedFile(self.file_path.absolute(), 'r+') as file:
             self.__clear_file(file.get_fd())
+            file.get_fd().write('{}')
     
     def __clear_file(self, file_descriptor: IO[Any]) -> None:
         file_descriptor.seek(0)
         file_descriptor.truncate(0)
 
 
+default_synchronizer = DataSynchronizer()
+
 def test() -> None:
     # Basic stuff
-    ds = DataSynchronizer()
+    ds = DataSynchronizer("./.pysfer/custom.json")
     ds.update('myStr', 'Hello')
     ds.update('myInt', 42)
     ds.update('myFloat', 3.14)
@@ -162,7 +167,6 @@ def test() -> None:
     ds.update("foo", 1337)
     ds.rename("foo", "bar")
     print(ds.get("bar"))
-    
-    
+
 if __name__ == '__main__':
     test()
