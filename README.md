@@ -4,7 +4,7 @@
 [![python](	https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org)
 
 
-Pysfer is a Python library for transfering data between python procseses. With pysfer you can:
+Pysfer is a Python library for transfering data between python processes. With pysfer you can:
 
 + Acsess variables or data from different Python programs.
 + Acsess variables or data between 'Main program' and other procseses.
@@ -13,7 +13,7 @@ Pysfer is a Python library for transfering data between python procseses. With p
 
 ## Installation
 
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install foobar.
+Use the package manager [pip](https://pip.pypa.io/en/stable/) to install pysfer.
 
 ```bash
 pip install pysfer
