@@ -4,7 +4,7 @@
 [![python](	https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org)
 
 
-Pysfer is a Python library for transfering data between python procseses. With pysfer you can:
+Pysfer is a Python library for transfering data between python processes. With pysfer you can:
 
 + Acsess variables or data from different Python programs.
 + Acsess variables or data between 'Main program' and other procseses.
@@ -13,7 +13,7 @@ Pysfer is a Python library for transfering data between python procseses. With p
 
 ## Installation
 
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install foobar.
+Use the package manager [pip](https://pip.pypa.io/en/stable/) to install pysfer.
 
 ```bash
 pip install pysfer
@@ -24,14 +24,27 @@ pip install pysfer
 ```python
 import pysfer
 
-# update or create "my_var" with "Hello World" value
-pysfer.localvar.update("my_var","Hello World!")
+# Update or create "my_var" with "Hello World" value
+pysfer.default_synchronizer.update("my_var","Hello World!")
 
-# returns the value of "my_var"
-new_var = pysfer.localvar.get("my_var")
+# Returns the value of "my_var"
+new_var = pysfer.default_synchronizer.get("my_var")
 
-# delete "my_var" and its value
-pysfer.localvar.delete("my_var")
+# Delete "my_var" and its value
+pysfer.default_synchronizer.delete("my_var")
+
+# It can also read and write custom class values
+class Point:
+    def __init__(self, x: float, y: float) -> None:
+        self.x = x
+        self.y = y
+
+
+p1 = Point(3, 4)
+pysfer.default_synchronizer.update("p1", p1)
+
+p2 = pysfer.default_synchronizer.get("p1", Point)
+print(p2.x, p2.y) # Prints "3 4"
 ```
 
 ## Contributing
