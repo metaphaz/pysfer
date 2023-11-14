@@ -1,4 +1,5 @@
-from typing import Self, Any, Literal, IO
+from typing import Any, Literal, IO
+from typing_extensions import Self
 import hashlib
 from pathlib import Path
 

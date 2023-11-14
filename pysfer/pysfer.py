@@ -2,7 +2,8 @@ import json
 import logging
 from pathlib import Path
 from guarded_file import GuardedFile
-from typing import Self, Any, Literal, IO
+from typing import Any, Literal, IO
+from typing_extensions import Self
 
 class DataSynchronizer:
     def __init__(self, filename: str = '') -> None:
